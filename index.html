@@ -31,8 +31,8 @@
         <!-- Hero Section -->
         <section id="hero" class="hero">
             <div class="hero-content" data-aos="fade-up" data-aos-duration="1000">
-                <h2>Creative Developer.</h2>
-                <p>Building beautiful, responsive, and dynamic web experiences without the bloat.</p>
+                <h2>Full Stack Developer.</h2>
+                <p>Building production ready applications from the ground up.</p>
                 <a href="#projects" class="btn">View My Work</a>
             </div>
         </section>
@@ -43,45 +43,69 @@
             <div class="project-grid">
                 
                 <!-- Project Card 1 -->
-                <div class="card" data-aos="zoom-in" data-aos-delay="100">
-                    <div class="card-image"></div>
-                    <div class="card-content">
-                        <h3>Project One</h3>
-                        <p>A cutting-edge web application built with modern web technologies and a focus on UX.</p>
+                <div class="card" data-aos="zoom-in" data-aos-delay="100" onclick="openModal('pharmaship-modal')">
+                        <div class="card-image" style="background-image: url('pharmashiphomepage.webp'); background-size: cover; background-position: center top;"></div>
+                        <div class="card-content">
+                            <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+                                <img src="logo.svg" alt="Pharmaship Logo" style="height: 24px; width: auto; border-radius: 4px;">
+                                Pharmaship
+                            </h3>
+                            <p style="margin-bottom: 0.8rem;">A B2B pharmaceutical delivery platform in Bangladesh. Scaled to over 2,000 pharmacies, processing ~$9,000 CAD daily.</p>
+                            <p style="font-size: 0.9rem; opacity: 0.8;">Provides easy access to life-saving drugs. Managed end-to-end operations: procurement, warehousing, next-day distribution, and finance.</p>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Project Card 2 -->
-                <div class="card" data-aos="zoom-in" data-aos-delay="200">
-                    <div class="card-image"></div>
-                    <div class="card-content">
-                        <h3>Project Two</h3>
-                        <p>An interactive data visualization dashboard with fluid, scroll-triggered animations.</p>
-                    </div>
-                </div>
-
-                <!-- Project Card 3 -->
-                <div class="card" data-aos="zoom-in" data-aos-delay="300">
-                    <div class="card-image"></div>
-                    <div class="card-content">
-                        <h3>Project Three</h3>
-                        <p>A sleek, high-conversion landing page focused on performance and typography.</p>
-                    </div>
-                </div>
 
             </div>
         </section>
     </main>
+
+    <!-- Modals -->
+    <div id="pharmaship-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('pharmaship-modal')">&times;</span>
+            <div class="modal-header">
+                <img src="logo.svg" alt="Pharmaship Logo" style="height: 40px; border-radius: 6px;">
+                <h2>Pharmaship</h2>
+            </div>
+            <img src="pharmashiphomepage.webp" alt="Pharmaship Preview" class="modal-image">
+            <div class="modal-body">
+                <h3>B2B Pharmaceutical Delivery Platform</h3>
+                <p>Operating in Bangladesh, Pharmaship provides easy access to life-saving drugs. We procure inventory, manage warehousing, and handle every aspect of the process from distribution and next-day delivery to HR, finance, and accounting.</p>
+                <p><strong>Technical Role:</strong> As the founder, I architected and wrote the entire codebase from scratch. This includes the backend API, automated deployment pipelines, a client-facing Flutter mobile application, and a comprehensive admin portal web app.</p>
+                <p><strong>Impact & Scale:</strong> We have successfully completed over 20,000 orders and scaled the platform to more than 2,000 pharmacies, currently processing around $9,000 CAD daily. To support this operation, we employ a dedicated team of 30 people spanning warehouse management, delivery operations, field sales, and telesales.</p>
+                <a href="https://play.google.com/store/apps/details?id=com.pharmaship.pharmashipclientapp&hl=en_CA" target="_blank" class="btn" style="margin-top: 1.5rem;">View on Google Play</a>
+            </div>
+        </div>
+    </div>
 
     <!-- AOS Animation Library JS -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         // Initialize the scroll animations
         AOS.init({
-            once: true, // whether animation should happen only once - while scrolling down
-            offset: 50, // offset (in px) from the original trigger point
+            once: true,
+            offset: 50,
             duration: 800,
         });
+
+        // Modal Logic
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close on clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
     </script>
 </body>
 </html>

@@ -11,7 +11,7 @@ document.body.prepend(canvas);
 const ctx = canvas.getContext('2d');
 
 let COLS = 30;
-let ROWS = 20;
+let ROWS;
 let BLOCK_SIZE;
 let yOffset = 0;
 let xOffset = 0;
@@ -20,18 +20,21 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // Base block size on window height so we always have a perfectly playable 20-row board
-    BLOCK_SIZE = Math.floor(canvas.height / ROWS);
+    // Resize unit size based on screen width to fit COLS perfectly
+    BLOCK_SIZE = Math.floor(canvas.width / COLS);
+    if (BLOCK_SIZE < 1) BLOCK_SIZE = 1; // Safeguard
     
-    // Center the board horizontally
+    // Resize height (ROWS) dynamically to fill screen height
+    ROWS = Math.ceil(canvas.height / BLOCK_SIZE);
+    
+    // Center any leftover pixels horizontally
     xOffset = Math.floor((canvas.width - (COLS * BLOCK_SIZE)) / 2);
     
-    // Calculate the leftover pixels at the bottom so we can render flush
+    // Calculate negative offset to make the board perfectly flush with the bottom
     yOffset = canvas.height - (ROWS * BLOCK_SIZE);
     
-    if (!board.length || board[0].length !== COLS) {
-        initBoard();
-    }
+    initBoard();
+    currentPiece = null;
 }
 
 const COLORS = [
@@ -60,17 +63,6 @@ let board = [];
 function initBoard() {
     board = Array.from({length: ROWS || 30}, () => Array(COLS).fill(0));
 }
-
-window.addEventListener('resize', () => {
-    let oldBoard = board;
-    resize();
-    for(let y=0; y<Math.min(ROWS, oldBoard.length); y++) {
-        for(let x=0; x<Math.min(COLS, oldBoard[y].length); x++) {
-            board[ROWS - 1 - y][x] = oldBoard[oldBoard.length - 1 - y][x];
-        }
-    }
-});
-resize();
 
 // 7-Bag Randomizer
 let bag = [];
@@ -466,5 +458,10 @@ function drawBlock(x, y, color, alpha, glow=false, isGhost=false) {
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 }
+
+window.addEventListener('resize', () => {
+    resize();
+});
+resize();
 
 requestAnimationFrame(update);

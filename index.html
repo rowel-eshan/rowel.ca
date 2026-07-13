@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rowel | Portfolio</title>
+    <link rel="stylesheet" href="index.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- AOS Animation Library CSS -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Abstract glowing background -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <h1 class="logo">Rowel.</h1>
+            <ul class="nav-links">
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#projects">Work</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section id="hero" class="hero">
+            <div class="hero-content" data-aos="fade-up" data-aos-duration="1000">
+                <h2>Creative Developer.</h2>
+                <p>Building beautiful, responsive, and dynamic web experiences without the bloat.</p>
+                <a href="#projects" class="btn">View My Work</a>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projects" class="projects">
+            <h2 data-aos="fade-right">Featured Projects</h2>
+            <div class="project-grid">
+                
+                <!-- Project Card 1 -->
+                <div class="card" data-aos="zoom-in" data-aos-delay="100">
+                    <div class="card-image"></div>
+                    <div class="card-content">
+                        <h3>Project One</h3>
+                        <p>A cutting-edge web application built with modern web technologies and a focus on UX.</p>
+                    </div>
+                </div>
+
+                <!-- Project Card 2 -->
+                <div class="card" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="card-image"></div>
+                    <div class="card-content">
+                        <h3>Project Two</h3>
+                        <p>An interactive data visualization dashboard with fluid, scroll-triggered animations.</p>
+                    </div>
+                </div>
+
+                <!-- Project Card 3 -->
+                <div class="card" data-aos="zoom-in" data-aos-delay="300">
+                    <div class="card-image"></div>
+                    <div class="card-content">
+                        <h3>Project Three</h3>
+                        <p>A sleek, high-conversion landing page focused on performance and typography.</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- AOS Animation Library JS -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // Initialize the scroll animations
+        AOS.init({
+            once: true, // whether animation should happen only once - while scrolling down
+            offset: 50, // offset (in px) from the original trigger point
+            duration: 800,
+        });
+    </script>
+</body>
+</html>

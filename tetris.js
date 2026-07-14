@@ -254,14 +254,32 @@ function evaluateBoard(b, testPiece) {
         }
     }
 
+    // Check if the board is dangerously high (Panic Mode)
+    let isPanic = false;
+    for (let c = 0; c < COLS; c++) {
+        // If any block exists in the top 8 rows, enter panic mode to survive!
+        for (let r = 0; r < 8; r++) { 
+            if (b[r] && b[r][c]) {
+                isPanic = true;
+                break;
+            }
+        }
+    }
+
     let wellPenalty = 0;
-    for(let py=0; py<testPiece.matrix.length; py++){
-        for(let px=0; px<testPiece.matrix[py].length; px++){
-            if(testPiece.matrix[py][px] && (testPiece.x + px === COLS - 1)) {
-                // Keep the well clear!
-                if (testPiece.shapeId !== 1) wellPenalty += 100; 
-                // Only allow the I piece in the well if it clears 4 lines!
-                else if (erasedLines < 4) wellPenalty += 100; 
+    // Only enforce the strict Tetris well if we aren't about to die!
+    if (!isPanic) {
+        for(let py=0; py<testPiece.matrix.length; py++){
+            for(let px=0; px<testPiece.matrix[py].length; px++){
+                if(testPiece.matrix[py][px] && (testPiece.x + px === COLS - 1)) {
+                    // Keep the well clear!
+                    if (testPiece.shapeId !== 1) {
+                        wellPenalty += 100; 
+                    } else if (erasedLines === 0) {
+                        // Allow I pieces to skim 1-3 lines in the well, just don't waste it for 0!
+                        wellPenalty += 100; 
+                    }
+                }
             }
         }
     }

@@ -88,8 +88,7 @@ class Piece {
 }
 
 let currentPiece = null;
-let targetX = 0;
-let targetRotation = 0;
+let currentPath = [];
 let floatingTexts = [];
 let flashTimer = 0;
 let shakeTimer = 0;
@@ -171,7 +170,7 @@ function clearLines() {
             text = linesCleared === 4 ? "TETRIS!" : (linesCleared === 3 ? "TRIPLE!" : (linesCleared === 2 ? "DOUBLE!" : "SINGLE!"));
         }
         
-        let textX = (targetX + 2) * BLOCK_SIZE;
+        let textX = (currentPiece.x + 2) * BLOCK_SIZE;
         let textY = (currentPiece.y) * BLOCK_SIZE;
         floatingTexts.push({ text: text, x: textX, y: textY, alpha: 1, life: 80, spin: lastSpin });
     }
@@ -186,7 +185,7 @@ function spawnPiece() {
     calculateBestMove();
 }
 
-function evaluateBoard(b, testPiece) {
+function evaluateBoard(b, testPiece, isLastMoveSpin) {
     let landingHeight = ROWS - testPiece.y;
     let erasedLines = 0;
     let rowTransitions = 0;
@@ -194,59 +193,72 @@ function evaluateBoard(b, testPiece) {
     let holes = 0;
     let wellSums = 0;
 
-    // 1. erasedLines
     for (let r = 0; r < ROWS; r++) {
-        let full = true;
+        let isFull = true;
         for (let c = 0; c < COLS; c++) {
-            if (!b[r][c]) full = false;
+            if (!b[r][c]) {
+                isFull = false;
+                break;
+            }
         }
-        if (full) erasedLines++;
+        if (isFull) erasedLines++;
     }
 
-    // 2. rowTransitions
+    // Check if we are in extreme danger (top 8 rows)
+    let isDanger = false;
+    for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < 8; r++) {
+            if (b[r] && b[r][c]) {
+                isDanger = true; break;
+            }
+        }
+        if (isDanger) break;
+    }
+
+    // MAGIC: By treating the far-right column as a solid wall (unless in danger), 
+    // the AI no longer incurs rowTransition penalties for leaving it empty! 
+    // This removes the mathematical urge to skim and fill the well.
     for (let r = 0; r < ROWS; r++) {
-        let lastCell = 1; // Wall is filled
+        let lastCell = 1; 
         for (let c = 0; c < COLS; c++) {
-            let cell = b[r][c] ? 1 : 0;
+            let cell = (!isDanger && c === COLS - 1) ? 1 : (b[r][c] ? 1 : 0);
             if (cell !== lastCell) rowTransitions++;
             lastCell = cell;
         }
-        if (lastCell !== 1) rowTransitions++;
+        if (lastCell !== 1) rowTransitions++; 
     }
 
-    // 3. colTransitions
-    for (let c = 0; c < COLS; c++) {
-        let lastCell = 0; // Top is empty
-        for (let r = 0; r < ROWS; r++) {
+    let endCol = isDanger ? COLS : COLS - 1;
+
+    for (let c = 0; c < endCol; c++) { 
+        let lastCell = 1; 
+        for (let r = ROWS - 1; r >= 0; r--) {
             let cell = b[r][c] ? 1 : 0;
             if (cell !== lastCell) colTransitions++;
             lastCell = cell;
         }
-        if (lastCell !== 1) colTransitions++;
     }
 
-    // 4. holes
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < endCol; c++) { 
         let blockFound = false;
         for (let r = 0; r < ROWS; r++) {
-            if (b[r][c]) blockFound = true;
-            else if (blockFound) holes++;
+            if (b[r][c]) {
+                blockFound = true;
+            } else if (blockFound) {
+                holes++;
+            }
         }
     }
 
-    // 5. wellSums
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < endCol; c++) { 
         let wellDepth = 0;
         for (let r = 0; r < ROWS; r++) {
             if (!b[r][c]) {
                 let leftFilled = (c === 0 || b[r][c-1]);
-                let rightFilled = (c === COLS-1 || b[r][c+1]);
+                let rightFilled = (c === endCol-1 || b[r][c+1]);
                 if (leftFilled && rightFilled) {
                     wellDepth++;
-                    // Do not penalize the designated Tetris well (far right column)
-                    if (c !== COLS - 1) {
-                        wellSums += wellDepth;
-                    }
+                    wellSums += wellDepth;
                 }
             } else {
                 wellDepth = 0; 
@@ -254,99 +266,149 @@ function evaluateBoard(b, testPiece) {
         }
     }
 
-    // Check if the board is dangerously high (Panic Mode)
-    let isPanic = false;
-    for (let c = 0; c < COLS; c++) {
-        // If any block exists in the top 8 rows, enter panic mode to survive!
-        for (let r = 0; r < 8; r++) { 
-            if (b[r] && b[r][c]) {
-                isPanic = true;
-                break;
-            }
+    // Penalize dropping garbage in the well (unless we are in danger and need to skim)
+    let wellGarbage = 0;
+    if (!isDanger) {
+        for (let r = 0; r < ROWS; r++) {
+            if (b[r][COLS-1]) wellGarbage++;
         }
     }
 
-    let wellPenalty = 0;
-    // Only enforce the strict Tetris well if we aren't about to die!
-    if (!isPanic) {
-        for(let py=0; py<testPiece.matrix.length; py++){
-            for(let px=0; px<testPiece.matrix[py].length; px++){
-                if(testPiece.matrix[py][px] && (testPiece.x + px === COLS - 1)) {
-                    // Keep the well clear!
-                    if (testPiece.shapeId !== 1) {
-                        wellPenalty += 100; 
-                    } else if (erasedLines === 0) {
-                        // Allow I pieces to skim 1-3 lines in the well, just don't waste it for 0!
-                        wellPenalty += 100; 
-                    }
-                }
-            }
-        }
+    let quadReward = (erasedLines === 4) ? 500 : 0; 
+    
+    let tSpinReward = 0;
+    if (testPiece.shapeId === 6 && isLastMoveSpin && checkTSpin(testPiece, b)) {
+        if (erasedLines > 0) tSpinReward = erasedLines * 100;
     }
 
-    let quadReward = (erasedLines === 4) ? 50 : 0; // Massive explicit reward for quads
-
-    // Professional Dellacherie algorithm weights, heavily tuned to aggressively hunt for Quads
-    return -landingHeight + 
-           (3.2178 * erasedLines) - 
-           (3.2256 * rowTransitions) - 
-           (9.3486 * colTransitions) - 
-           (7.8992 * holes) - 
-           (3.3855 * wellSums) - 
-           wellPenalty + 
-           quadReward;
+    return (-4.50015 * landingHeight) + 
+           (3.41812 * erasedLines) - 
+           (3.21788 * rowTransitions) - 
+           (9.34869 * colTransitions) - 
+           (7.89926 * holes) - 
+           (3.38559 * wellSums) - 
+           (20.0 * wellGarbage) + 
+           quadReward + 
+           tSpinReward;
 }
 
 function calculateBestMove() {
-    let bestScore = -Infinity;
-    let bestX = currentPiece.x;
-    let bestRot = 0;
-
-    let testPiece = { x: currentPiece.x, y: 0, matrix: currentPiece.matrix, shapeId: currentPiece.shapeId };
-    let isI = currentPiece.shapeId === 1;
-
-    for (let rot = 0; rot < 4; rot++) {
-        for (let x = -2; x < COLS + 2; x++) {
-            testPiece.x = x;
-            testPiece.y = 0;
-            if (collide(board, testPiece, 0, 0, testPiece.matrix)) continue;
-            
-            while (!collide(board, testPiece, 0, 1, testPiece.matrix)) {
-                testPiece.y++;
-            }
-            
-            for(let py=0; py<testPiece.matrix.length; py++){
-                for(let px=0; px<testPiece.matrix[py].length; px++){
-                    if(testPiece.matrix[py][px]) {
-                        let ny = testPiece.y + py;
-                        if(ny>=0 && ny<ROWS) {
-                            board[ny][testPiece.x + px] = 1;
-                        }
-                    }
-                }
-            }
-            
-            let score = evaluateBoard(board, testPiece);
-            
-            for(let py=0; py<testPiece.matrix.length; py++){
-                for(let px=0; px<testPiece.matrix[py].length; px++){
-                    if(testPiece.matrix[py][px]) {
-                        let ny = testPiece.y + py;
-                        if(ny>=0 && ny<ROWS) board[ny][testPiece.x + px] = 0;
-                    }
-                }
-            }
-            
-            if (score > bestScore) {
-                bestScore = score;
-                bestX = x;
-                bestRot = rot;
+    let mats = [
+        currentPiece.matrix,
+        rotateMatrix(currentPiece.matrix),
+        rotateMatrix(rotateMatrix(currentPiece.matrix)),
+        rotateMatrix(rotateMatrix(rotateMatrix(currentPiece.matrix)))
+    ];
+    
+    let queue = [{
+        x: currentPiece.x, 
+        y: currentPiece.y, 
+        rot: 0, 
+        path: [] 
+    }];
+    let visited = new Set();
+    let placements = [];
+    
+    let getKey = (x, y, r) => `${x},${y},${r}`;
+    visited.add(getKey(currentPiece.x, currentPiece.y, 0));
+    
+    let iterations = 0;
+    while (queue.length > 0 && iterations < 5000) {
+        iterations++;
+        let curr = queue.shift();
+        let mat = mats[curr.rot];
+        
+        // Is it locked? (can't move down)
+        if (collide(board, {x: curr.x, y: curr.y, matrix: mat}, 0, 1)) {
+            placements.push(curr);
+        } 
+        
+        // Try Down
+        if (!collide(board, {x: curr.x, y: curr.y, matrix: mat}, 0, 1)) {
+            let k = getKey(curr.x, curr.y+1, curr.rot);
+            if (!visited.has(k)) {
+                visited.add(k);
+                queue.push({x: curr.x, y: curr.y+1, rot: curr.rot, path: curr.path.concat('D')});
             }
         }
-        testPiece.matrix = rotateMatrix(testPiece.matrix);
+        
+        // Try Left
+        if (!collide(board, {x: curr.x, y: curr.y, matrix: mat}, -1, 0)) {
+            let k = getKey(curr.x-1, curr.y, curr.rot);
+            if (!visited.has(k)) {
+                visited.add(k);
+                queue.push({x: curr.x-1, y: curr.y, rot: curr.rot, path: curr.path.concat('L')});
+            }
+        }
+        
+        // Try Right
+        if (!collide(board, {x: curr.x, y: curr.y, matrix: mat}, 1, 0)) {
+            let k = getKey(curr.x+1, curr.y, curr.rot);
+            if (!visited.has(k)) {
+                visited.add(k);
+                queue.push({x: curr.x+1, y: curr.y, rot: curr.rot, path: curr.path.concat('R')});
+            }
+        }
+        
+        // Try Rotate (Clockwise)
+        let nextRot = (curr.rot + 1) % 4;
+        let nextMat = mats[nextRot];
+        // Test basic kicks to allow tucks and T-Spins
+        let kicks = [[0,0], [-1,0], [1,0], [0,-1], [-1,-1], [1,-1], [0,1], [-1,1], [1,1]];
+        for (let kick of kicks) {
+            if (!collide(board, {x: curr.x, y: curr.y, matrix: nextMat}, kick[0], kick[1])) {
+                let nx = curr.x + kick[0];
+                let ny = curr.y + kick[1];
+                let k = getKey(nx, ny, nextRot);
+                if (!visited.has(k)) {
+                    visited.add(k);
+                    queue.push({x: nx, y: ny, rot: nextRot, path: curr.path.concat('O')}); 
+                }
+                break; 
+            }
+        }
     }
-    targetX = bestX;
-    targetRotation = bestRot;
+    
+    let bestScore = -Infinity;
+    let bestPlacement = null;
+    
+    for (let p of placements) {
+        let testPiece = { x: p.x, y: p.y, matrix: mats[p.rot], shapeId: currentPiece.shapeId };
+        
+        // place on board
+        for(let py=0; py<testPiece.matrix.length; py++){
+            for(let px=0; px<testPiece.matrix[py].length; px++){
+                if(testPiece.matrix[py][px]) {
+                    let ny = testPiece.y + py;
+                    if(ny>=0 && ny<ROWS) board[ny][testPiece.x + px] = 1;
+                }
+            }
+        }
+        
+        let isLastMoveSpin = (p.path.length > 0 && p.path[p.path.length-1] === 'O');
+        let score = evaluateBoard(board, testPiece, isLastMoveSpin);
+        
+        // unplace
+        for(let py=0; py<testPiece.matrix.length; py++){
+            for(let px=0; px<testPiece.matrix[py].length; px++){
+                if(testPiece.matrix[py][px]) {
+                    let ny = testPiece.y + py;
+                    if(ny>=0 && ny<ROWS) board[ny][testPiece.x + px] = 0;
+                }
+            }
+        }
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestPlacement = p;
+        }
+    }
+    
+    if (bestPlacement) {
+        currentPath = bestPlacement.path;
+    } else {
+        currentPath = [];
+    }
 }
 
 let lastTime = 0;
@@ -364,30 +426,27 @@ function update(time) {
 
     if (moveTimer > 10) { 
         moveTimer = 0;
-        if (targetRotation > 0) {
-            let nextMat = rotateMatrix(currentPiece.matrix);
-            // Basic SRS Wall Kicks to allow spins to snap into place
-            if (!collide(board, currentPiece, 0, 0, nextMat)) {
-                currentPiece.matrix = nextMat; targetRotation--;
-            } else if (!collide(board, currentPiece, 1, 0, nextMat)) {
-                currentPiece.x++; currentPiece.matrix = nextMat; targetRotation--;
-            } else if (!collide(board, currentPiece, -1, 0, nextMat)) {
-                currentPiece.x--; currentPiece.matrix = nextMat; targetRotation--;
-            } else targetRotation = 0; 
-        } 
-        else if (currentPiece.x < targetX) {
-            if (!collide(board, currentPiece, 1, 0)) currentPiece.x++;
-            else targetX = currentPiece.x;
-        } else if (currentPiece.x > targetX) {
-            if (!collide(board, currentPiece, -1, 0)) currentPiece.x--;
-            else targetX = currentPiece.x;
+        if (currentPath.length > 0) {
+            let move = currentPath.shift();
+            if (move === 'L') currentPiece.x--;
+            else if (move === 'R') currentPiece.x++;
+            else if (move === 'D') currentPiece.y++;
+            else if (move === 'O') {
+                let nextMat = rotateMatrix(currentPiece.matrix);
+                let kicks = [[0,0], [-1,0], [1,0], [0,-1], [-1,-1], [1,-1], [0,1], [-1,1], [1,1]];
+                for (let kick of kicks) {
+                    if (!collide(board, currentPiece, kick[0], kick[1], nextMat)) {
+                        currentPiece.x += kick[0];
+                        currentPiece.y += kick[1];
+                        currentPiece.matrix = nextMat;
+                        break;
+                    }
+                }
+            }
         }
     }
 
-    let isAtTarget = (currentPiece.x === targetX && targetRotation === 0);
-
-    // Only allow dropping once the piece is perfectly aligned to prevent getting snagged on towers!
-    if (isAtTarget) {
+    if (currentPath.length === 0) {
         if (dropTimer > 10) { 
             dropTimer = 0;
             if (!collide(board, currentPiece, 0, 1)) {
@@ -399,7 +458,7 @@ function update(time) {
             }
         }
     } else {
-        dropTimer = 0; // Suspend gravity while shifting
+        dropTimer = 0; // Suspend gravity while following path
     }
     
     draw();

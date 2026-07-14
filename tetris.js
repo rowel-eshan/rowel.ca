@@ -42,13 +42,13 @@ function resize() {
 
 const COLORS = [
     null,
-    '#00ffff', // I - cyan
-    '#0000ff', // J - blue
-    '#ff7f00', // L - orange
-    '#ffff00', // O - yellow
-    '#00ff00', // S - green
-    '#800080', // T - purple
-    '#ff0000'  // Z - red
+    'hsl(180, 60%, 50%)', // I - desaturated cyan
+    'hsl(240, 60%, 60%)', // J - desaturated blue
+    'hsl(30, 70%, 50%)',  // L - desaturated orange
+    'hsl(60, 60%, 45%)',  // O - desaturated yellow
+    'hsl(120, 60%, 50%)', // S - desaturated green
+    'hsl(300, 60%, 50%)', // T - desaturated purple
+    'hsl(0, 60%, 55%)'    // Z - desaturated red
 ];
 
 const SHAPES = [
@@ -487,7 +487,7 @@ function draw() {
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             if (board[y] && board[y][x]) {
-                drawBlock(x, y, COLORS[board[y][x]], 0.15, true); 
+                drawBlock(x, y, COLORS[board[y][x]], 0.1, true); // Restored low opacity for background look
             }
         }
     }
@@ -501,7 +501,7 @@ function draw() {
             for (let x = 0; x < currentPiece.matrix[y].length; x++) {
                 if (currentPiece.matrix[y][x]) {
                     drawBlock(currentPiece.x + x, ghostY + y, COLORS[currentPiece.shapeId], 0.05, false, true);
-                    drawBlock(currentPiece.x + x, currentPiece.y + y, COLORS[currentPiece.shapeId], 0.6, true);
+                    drawBlock(currentPiece.x + x, currentPiece.y + y, COLORS[currentPiece.shapeId], 0.3, true); // Reduced from 0.6
                 }
             }
         }
@@ -523,19 +523,80 @@ function draw() {
 }
 
 function drawBlock(x, y, color, alpha, glow=false, isGhost=false) {
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = color;
-    ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+    let px = x * BLOCK_SIZE;
+    let py = y * BLOCK_SIZE;
+    let b = Math.max(2, Math.floor(BLOCK_SIZE * 0.12)); // Dynamic bevel size based on screen scale
     
-    if (glow) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = color;
+    ctx.globalAlpha = alpha;
+
+    if (isGhost) {
+        ctx.fillStyle = color;
+        ctx.fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.4)`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+    } else {
+        // Base color
+        ctx.fillStyle = color;
+        ctx.fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+        
+        // Top highlight bevel
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + BLOCK_SIZE, py);
+        ctx.lineTo(px + BLOCK_SIZE - b, py + b);
+        ctx.lineTo(px + b, py + b);
+        ctx.fill();
+        
+        // Left highlight bevel
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + b, py + b);
+        ctx.lineTo(px + b, py + BLOCK_SIZE - b);
+        ctx.lineTo(px, py + BLOCK_SIZE);
+        ctx.fill();
+        
+        // Right shadow bevel
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(px + BLOCK_SIZE, py);
+        ctx.lineTo(px + BLOCK_SIZE, py + BLOCK_SIZE);
+        ctx.lineTo(px + BLOCK_SIZE - b, py + BLOCK_SIZE - b);
+        ctx.lineTo(px + BLOCK_SIZE - b, py + b);
+        ctx.fill();
+        
+        // Bottom shadow bevel
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.moveTo(px, py + BLOCK_SIZE);
+        ctx.lineTo(px + b, py + BLOCK_SIZE - b);
+        ctx.lineTo(px + BLOCK_SIZE - b, py + BLOCK_SIZE - b);
+        ctx.lineTo(px + BLOCK_SIZE, py + BLOCK_SIZE);
+        ctx.fill();
+        
+        // Inner gloss gradient
+        let grd = ctx.createLinearGradient(px, py, px, py + BLOCK_SIZE);
+        grd.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        grd.addColorStop(1, 'rgba(0, 0, 0, 0.15)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(px + b, py + b, BLOCK_SIZE - (b*2), BLOCK_SIZE - (b*2));
+        
+        // Outer dark border to separate blocks cleanly
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
     }
     
-    ctx.strokeStyle = isGhost ? color : `rgba(255,255,255,${alpha * 1.5})`;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-    ctx.shadowBlur = 0;
+    if (glow && !isGhost) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.3; // Boosted glow to complement the 3D aesthetic
+        ctx.fillRect(px, py, BLOCK_SIZE, BLOCK_SIZE);
+        ctx.shadowBlur = 0;
+    }
     ctx.globalAlpha = 1;
 }
 

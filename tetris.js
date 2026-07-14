@@ -20,6 +20,9 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // Dynamic columns for mobile vs desktop
+    COLS = window.innerWidth < 768 ? 10 : 30;
+    
     // Resize unit size based on screen width to fit COLS perfectly
     BLOCK_SIZE = Math.floor(canvas.width / COLS);
     if (BLOCK_SIZE < 1) BLOCK_SIZE = 1; // Safeguard
@@ -424,7 +427,7 @@ function update(time) {
     moveTimer += deltaTime;
     dropTimer += deltaTime;
 
-    if (moveTimer > 10) { 
+    if (moveTimer > 17) { 
         moveTimer = 0;
         if (currentPath.length > 0) {
             let move = currentPath.shift();
@@ -447,7 +450,7 @@ function update(time) {
     }
 
     if (currentPath.length === 0) {
-        if (dropTimer > 10) { 
+        if (dropTimer > 17) { 
             dropTimer = 0;
             if (!collide(board, currentPiece, 0, 1)) {
                 currentPiece.y++;
